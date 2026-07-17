@@ -84,6 +84,14 @@ class ActionProcessor(BaseProcessor):
         self.dt = 1/15 
         super().__init__(args)
 
+    def _apply_config(self, cfg) -> None:
+        super()._apply_config(cfg)
+        fps = float(getattr(cfg, "fps", 15.0))
+        if fps <= 0:
+            raise ValueError("fps must be positive")
+        self.dt = 1 / fps
+        self.preserve_timeline = bool(getattr(cfg, "preserve_timeline", False))
+
     def process_one_demo(self, data_sub_folder: str) -> None:
         """
         Process a single demonstration recording into robot actions.
@@ -115,8 +123,10 @@ class ActionProcessor(BaseProcessor):
         # Process the selected hand sequence
         target_actions = self._process_hand_sequence(target_sequence, self.T_cam2robot)
         
-        # Get indices where hand was detected for this sequence
-        union_indices = np.where(target_sequence.hand_detected)[0]
+        if self.preserve_timeline:
+            union_indices = np.arange(len(target_sequence.hand_detected))
+        else:
+            union_indices = np.where(target_sequence.hand_detected)[0]
         
         # Refine actions to handle missing detections
         target_actions_refined = self._refine_actions(target_sequence, target_actions, union_indices, self.target_hand)
@@ -133,8 +143,12 @@ class ActionProcessor(BaseProcessor):
         left_actions = self._process_hand_sequence(left_sequence, self.T_cam2robot)
         right_actions = self._process_hand_sequence(right_sequence, self.T_cam2robot)
         
-        # Combine detection results using OR logic - frame is valid if either hand detected
-        union_indices = np.where(left_sequence.hand_detected | right_sequence.hand_detected)[0]
+        if self.preserve_timeline:
+            union_indices = np.arange(len(left_sequence.hand_detected))
+        else:
+            union_indices = np.where(
+                left_sequence.hand_detected | right_sequence.hand_detected
+            )[0]
 
         # Refine actions for both hands using the union indices
         left_actions_refined = self._refine_actions(left_sequence, left_actions, union_indices, "left")

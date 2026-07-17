@@ -684,14 +684,8 @@ class RobotInpaintProcessor(BaseProcessor):
         fx, fy, cx, cy = self._get_camera_intrinsics(offset)
         sensor_width, sensor_height = self._calculate_sensor_size(img_w, img_h, fx, fy)
 
-        # Select appropriate camera name based on dataset
-        if self.epic:
-            camera_name = "zed"
-        else:
-            camera_name = "frontview"
-            
         return MujocoCameraParams(
-            name=camera_name,
+            name="frontview" if self.bimanual_setup == "single_arm" else "zed",
             pos=extrinsics["camera_base_pos"],
             ori_wxyz=camera_ori_wxyz,
             fov=self.intrinsics_dict["v_fov"],
@@ -708,14 +702,12 @@ class RobotInpaintProcessor(BaseProcessor):
         Returns:
             Tuple of (width, height) in pixels
         """
-        # Epic
         if self.input_resolution == 256:
-            img_w = 456 
-        # Phantom paper
-        elif self.input_resolution == 1080:
-            img_w = self.input_resolution * 16 // 9
-        img_h = self.input_resolution
-        return img_w, img_h
+            legacy_width = 456
+        else:
+            legacy_width = self.input_resolution * 16 // 9
+        img_w = int(getattr(self.cfg, "input_width", legacy_width))
+        return img_w, self.input_resolution
     
     def _calculate_image_offset(self, img_w: int, img_h: int) -> int:
         """
@@ -782,4 +774,3 @@ class RobotInpaintProcessor(BaseProcessor):
         camera_ori_wxyz = r.as_quat(scalar_first=True)
         return camera_ori_wxyz
  
-

@@ -2,7 +2,6 @@
 Wrapper around SAM2 for object segmentation
 """
 import numpy as np
-import pdb
 import os 
 import logging
 import requests
@@ -86,9 +85,8 @@ class DetectorSam2:
                             points=np.array(point),
                             labels=np.ones(len(point)),
                         )
-                except Exception as e:
-                    print("Error in adding new points or box:", e)
-                    pdb.set_trace()
+                except Exception:
+                    raise
  
             video_segments = {}
             for (
